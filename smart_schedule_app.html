@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能行程表 - Smart Itinerary & Schedule</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom scrollbar for clean visual aesthetic */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .glass-header { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Top Glass Header -->
+    <header class="sticky top-0 z-30 glass-header border-b border-slate-200 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-indigo-200">
+                    <i class="fa-solid font-bold fa-calendar-check"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight" id="appTitleText">智能行程表</h1>
+                    <p class="text-xs text-slate-500" id="currentDateSub">2026年10月1日</p>
+                </div>
+            </div>
+
+            <!-- Controls: User Info, Language, Past Events Toggle -->
+            <div class="flex items-center space-x-2">
+                <!-- Language Switcher -->
+                <button onclick="toggleLanguage()" class="px-2.5 py-1.5 text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors flex items-center space-x-1">
+                    <i class="fa-solid fa-globe"></i>
+                    <span id="langBtnText">EN</span>
+                </button>
+
+                <!-- User Account Dropdown / Login -->
+                <div id="userProfileBtn" class="relative">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Daily Notification Simulation & Free-Time Alert Banner -->
+    <div class="max-w-4xl mx-auto px-4 w-full mt-3">
+        <div id="notificationBanner" class="hidden p-3.5 bg-amber-50 border border-amber-200 rounded-xl shadow-sm text-amber-900 flex items-start justify-between space-x-3 transition-all">
+            <div class="flex items-start space-x-3">
+                <i class="fa-solid fa-bell text-amber-600 mt-0.5 text-lg"></i>
+                <div>
+                    <h4 class="font-semibold text-sm" id="notifTitle">行程提醒</h4>
+                    <p class="text-xs text-amber-800 mt-0.5" id="notifBody">提醒内容...</p>
+                </div>
+            </div>
+            <button onclick="closeNotificationBanner()" class="text-amber-500 hover:text-amber-700">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Scrollable Timeline Feed Section -->
+    <main class="max-w-4xl mx-auto px-4 py-4 w-full flex-grow flex flex-col space-y-4">
+
+        <!-- Search & View Filters Bar -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+            <!-- Search Keyword & Date Jump -->
+            <div class="flex-grow w-full md:w-auto flex flex-col sm:flex-row gap-2">
+                <!-- Search Input -->
+                <div class="relative flex-grow">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-sm"></i>
+                    <input type="text" id="searchInput" oninput="renderTimeline()" placeholder="搜索行程关键字或时间..."
+                           class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
+                </div>
+                <!-- Date Picker Jump -->
+                <div class="relative w-full sm:w-48">
+                    <input type="date" id="dateFilterInput" onchange="renderTimeline()" 
+                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
+                </div>
+            </div>
+
+            <!-- Filters Toggle Buttons -->
+            <div class="flex items-center space-x-2 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-2 md:pt-0 border-slate-100">
+                <button onclick="clearFilters()" class="text-xs font-medium text-slate-500 hover:text-indigo-600 px-2 py-1.5" id="clearFilterBtn">
+                    重置筛选
+                </button>
+                
+                <button onclick="toggleShowPast()" id="showPastBtn" class="px-3 py-1.5 text-xs font-medium rounded-xl border transition-colors flex items-center space-x-1">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span id="showPastBtnText">显示过往行程</span>
+                </button>
+
+                <button onclick="openAddModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-md shadow-indigo-100 transition-all flex items-center space-x-1.5">
+                    <i class="fa-solid fa-plus"></i>
+                    <span id="addBtnText">添加行程</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Timeline Container (Infinite Scrollable List) -->
+        <div id="timelineContainer" class="space-y-6 pb-20">
+            <!-- Dynamically populated timeline dates -->
+        </div>
+    </main>
+
+    <!-- Authentication / User Registration Modal -->
+    <div id="authModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-md w-full p-6 space-y-5">
+            <div class="text-center space-y-1">
+                <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-bold">
+                    <i class="fa-solid fa-user-gear"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900" id="authTitle">用户登录 / 注册</h3>
+                <p class="text-xs text-slate-500" id="authSubtitle">请输入您的用户名以同步本地行程表</p>
+            </div>
+
+            <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1" id="usernameLabel">用户名 (唯一标识)</label>
+                    <input type="text" id="authUsername" required placeholder="例如: alex_2026"
+                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <p id="authErrorMsg" class="text-xs text-red-500 mt-1 hidden"></p>
+                </div>
+
+                <div class="flex space-x-2 pt-2">
+                    <button type="button" onclick="closeAuthModal()" class="w-1/2 py-2.5 border border-slate-200 text-slate-600 font-medium text-sm rounded-xl hover:bg-slate-50" id="authCancelBtn">
+                        取消
+                    </button>
+                    <button type="submit" class="w-1/2 py-2.5 bg-indigo-600 text-white font-medium text-sm rounded-xl hover:bg-indigo-700 shadow-md shadow-indigo-100" id="authConfirmBtn">
+                        进入行程表
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add / Edit Itinerary Modal -->
+    <div id="itineraryModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-lg w-full p-6 space-y-5 my-8">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center space-x-2">
+                    <i class="fa-solid fa-calendar-plus text-indigo-600"></i>
+                    <span id="modalFormTitle">新建行程</span>
+                </h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="itineraryForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                <input type="hidden" id="editItemId">
+
+                <!-- Title -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1" id="fieldTitleLabel">行程名称 *</label>
+                    <input type="text" id="itemTitle" required placeholder="例如：提交期末论文 / 团队开会 / 假期旅游"
+                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <!-- Schedule Type Selection (Requirement 9 & 15) -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1" id="fieldTypeLabel">行程类型 *</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="itemType" value="regular" checked onchange="updateFormFields()" class="peer sr-only">
+                            <div class="p-2.5 border border-slate-200 rounded-xl text-center peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 transition-all">
+                                <i class="fa-solid fa-clock block text-base mb-1"></i>
+                                <span class="text-xs font-semibold block" id="typeRegularLabel">普通单日行程</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="itemType" value="deadline" onchange="updateFormFields()" class="peer sr-only">
+                            <div class="p-2.5 border border-slate-200 rounded-xl text-center peer-checked:border-amber-600 peer-checked:bg-amber-50 peer-checked:text-amber-700 transition-all">
+                                <i class="fa-solid fa-hourglass-half block text-base mb-1"></i>
+                                <span class="text-xs font-semibold block" id="typeDeadlineLabel">功课/工作截止</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="itemType" value="multiday" onchange="updateFormFields()" class="peer sr-only">
+                            <div class="p-2.5 border border-slate-200 rounded-xl text-center peer-checked:border-purple-600 peer-checked:bg-purple-50 peer-checked:text-purple-700 transition-all">
+                                <i class="fa-solid fa-calendar-days block text-base mb-1"></i>
+                                <span class="text-xs font-semibold block" id="typeMultidayLabel">多日活动行程</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Date Inputs Container -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="dateSection">
+                    <div id="startDateBox">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" id="startDateLabel">开始日期 *</label>
+                        <input type="date" id="startDate" required onchange="validateDates()"
+                               class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div id="endDateBox" class="hidden">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" id="endDateLabel">结束/截止日期 *</label>
+                        <input type="date" id="endDate" onchange="validateDates()"
+                               class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Time Option Type (Requirement 2 & 15) -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1" id="fieldTimeTypeLabel">时间设定</label>
+                    <select id="timeType" onchange="updateTimeFields()" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="both" id="timeTypeBoth">指定开始与结束时间</option>
+                        <option value="start_only" id="timeTypeStartOnly">仅选择开始时间</option>
+                        <option value="none" id="timeTypeNone">全天 / 不设置时间</option>
+                    </select>
+                </div>
+
+                <!-- Time Inputs -->
+                <div class="grid grid-cols-2 gap-3" id="timeInputsBox">
+                    <div id="startTimeBox">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" id="startTimeLabel">开始时间</label>
+                        <input type="time" id="startTime"
+                               class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div id="endTimeBox">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1" id="endTimeLabel">结束时间</label>
+                        <input type="time" id="endTime"
+                               class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Notes / Description -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1" id="fieldNotesLabel">备注 / 详情 (选填)</label>
+                    <textarea id="itemNotes" rows="2" placeholder="添加补充说明..."
+                              class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+                </div>
+
+                <!-- Conflict Error Warning Alert -->
+                <div id="formConflictAlert" class="hidden p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center space-x-2">
+                    <i class="fa-solid fa-triangle-exclamation text-red-500 text-sm"></i>
+                    <span id="conflictAlertText">该时间段行程已满或存在冲突！</span>
+                </div>
+
+                <!-- Form Action Buttons -->
+                <div class="flex items-center space-x-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeModal()" class="w-1/2 py-2.5 border border-slate-200 text-slate-600 font-medium text-sm rounded-xl hover:bg-slate-50" id="cancelModalBtn">
+                        取消
+                    </button>
+                    <button type="submit" class="w-1/2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-md shadow-indigo-100 transition-all" id="saveModalBtn">
+                        保存行程
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Today's anchor date string formatted YYYY-MM-DD
+        const getTodayString = () => new Date().toISOString().split('T')[0];
+        
+        // Multi-language translation dictionary
+        const translations = {
+            zh: {
+                appTitle: "智能行程表",
+                langBtn: "English",
+                searchPlaceholder: "搜索行程关键字或时间...",
+                showPastBtnShow: "显示过往行程",
+                showPastBtnHide: "隐藏过往行程",
+                addBtn: "添加行程",
+                resetFilter: "重置筛选",
+                modalTitleAdd: "新建行程",
+                modalTitleEdit: "编辑行程",
+                fieldTitle: "行程名称 *",
+                fieldType: "行程类型 *",
+                typeRegular: "普通单日行程",
+                typeDeadline: "功课/工作截止",
+                typeMultiday: "多日活动行程",
+                startDate: "开始日期 *",
+                endDate: "结束日期 *",
+                deadlineDate: "截止日期 *",
+                fieldTimeType: "时间设定",
+                timeTypeBoth: "指定开始与结束时间",
+                timeTypeStartOnly: "仅选择开始时间",
+                timeTypeNone: "全天 / 不设置时间",
+                startTime: "开始时间",
+                endTime: "结束时间",
+                fieldNotes: "备注 / 详情 (选填)",
+                cancel: "取消",
+                save: "保存行程",
+                conflictAlert: "⚠️ 该时间段行程已满或已存在重合行程！",
+                pastDateAlert: "⚠️ 无法创建开始日期早于今天的行程！",
+                lightDayNotif: "💡 今日行程较少/较宽裕，适合处理其他事务或放松！",
+                nightNotifTitle: "🌙 明日行程预告",
+                morningNotifTitle: "☀️ 今日行程提醒",
+                noSchedules: "当前暂无行程安排",
+                duePrefix: "截至日期: ",
+                dueTag: "⏳ 截止日任务",
+                multidayTag: "🗓️ 多日活动",
+                timedTag: "⏰ 定时",
+                untimedTag: "📌 全天/未定时",
+                loginText: "登录 / 切换账号",
+                guestUser: "访客用户",
+                userLabel: "用户名 (唯一标识)",
+                usernameRequired: "用户名不能为空！",
+                timeFullWarning: "该时刻已有行程安排！"
+            },
+            en: {
+                appTitle: "Smart Schedule",
+                langBtn: "中文",
+                searchPlaceholder: "Search event keywords or time...",
+                showPastBtnShow: "Show Past Events",
+                showPastBtnHide: "Hide Past Events",
+                addBtn: "Add Event",
+                resetFilter: "Reset Filters",
+                modalTitleAdd: "Create Event",
+                modalTitleEdit: "Edit Event",
+                fieldTitle: "Title *",
+                fieldType: "Event Type *",
+                typeRegular: "Single Day",
+                typeDeadline: "Task / Due Date",
+                typeMultiday: "Multi-day Event",
+                startDate: "Start Date *",
+                endDate: "End Date *",
+                deadlineDate: "Due Date *",
+                fieldTimeType: "Time Option",
+                timeTypeBoth: "Start & End Time",
+                timeTypeStartOnly: "Start Time Only",
+                timeTypeNone: "All Day / No Time",
+                startTime: "Start Time",
+                endTime: "End Time",
+                fieldNotes: "Notes / Details (Optional)",
+                cancel: "Cancel",
+                save: "Save Event",
+                conflictAlert: "⚠️ Time slot conflict detected or schedule full!",
+                pastDateAlert: "⚠️ Cannot create an event starting in the past!",
+                lightDayNotif: "💡 Light schedule today! Great time to relax or work on secondary goals.",
+                nightNotifTitle: "🌙 Tomorrow's Preview",
+                morningNotifTitle: "☀️ Today's Schedule Alert",
+                noSchedules: "No events scheduled",
+                duePrefix: "Due Date: ",
+                dueTag: "⏳ Task Deadline",
+                multidayTag: "🗓️ Multi-day",
+                timedTag: "⏰ Timed",
+                untimedTag: "📌 All Day",
+                loginText: "Login / Switch Account",
+                guestUser: "Guest User",
+                userLabel: "Username (Unique)",
+                usernameRequired: "Username cannot be empty!",
+                timeFullWarning: "Time slot conflict!"
+            }
+        };
+
+        let currentLang = 'zh'; // 'zh' or 'en'
+        let currentUser = localStorage.getItem('schedule_current_user') || 'default_user';
+        let showPastEvents = false;
+        let scheduleItems = [];
+
+        function loadUserData() {
+            const raw = localStorage.getItem(`schedule_items_${currentUser}`);
+            scheduleItems = raw ? JSON.parse(raw) : getSampleData();
+            saveUserData();
+        }
+
+        function saveUserData() {
+            localStorage.setItem(`schedule_items_${currentUser}`, JSON.stringify(scheduleItems));
+        }
+
+        // Default sample data for visual preview if empty
+        function getSampleData() {
+            const today = getTodayString();
+            const tomorrow = getFutureDate(1);
+            const in3Days = getFutureDate(3);
+            return [
+                {
+                    id: "sample_1",
+                    title: "团队早会 (Team Sync)",
+                    type: "regular",
+                    startDate: today,
+                    endDate: today,
+                    timeType: "both",
+                    startTime: "09:00",
+                    endTime: "10:00",
+                    notes: "线上 Zoom 会议",
+                    createdAt: new Date().toISOString()
+                },
+                {
+                    id: "sample_2",
+                    title: "提交项目期末报告",
+                    type: "deadline",
+                    startDate: today,
+                    endDate: in3Days,
+                    timeType: "both",
+                    startTime: "18:00",
+                    endTime: "23:59",
+                    notes: "包含 PDF 附件及演示文稿",
+                    createdAt: new Date().toISOString()
+                },
+                {
+                    id: "sample_3",
+                    title: "全员黑客松大赛 (Hackathon)",
+                    type: "multiday",
+                    startDate: today,
+                    endDate: tomorrow,
+                    timeType: "start_only",
+                    startTime: "10:00",
+                    endTime: "",
+                    notes: "主会场 3 楼大厅",
+                    createdAt: new Date().toISOString()
+                }
+            ];
+        }
+
+        function getFutureDate(days) {
+            const d = new Date();
+            d.setDate(d.getDate() + days);
+            return d.toISOString().split('T')[0];
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            updateStaticText();
+            renderTimeline();
+        }
+
+        function updateStaticText() {
+            const t = translations[currentLang];
+            document.getElementById('appTitleText').innerText = t.appTitle;
+            document.getElementById('langBtnText').innerText = t.langBtn;
+            document.getElementById('searchInput').placeholder = t.searchPlaceholder;
+            document.getElementById('addBtnText').innerText = t.addBtn;
+            document.getElementById('clearFilterBtn').innerText = t.resetFilter;
+            document.getElementById('showPastBtnText').innerText = showPastEvents ? t.showPastBtnHide : t.showPastBtnShow;
+            
+            document.getElementById('fieldTitleLabel').innerText = t.fieldTitle;
+            document.getElementById('fieldTypeLabel').innerText = t.fieldType;
+            document.getElementById('typeRegularLabel').innerText = t.typeRegular;
+            document.getElementById('typeDeadlineLabel').innerText = t.typeDeadline;
+            document.getElementById('typeMultidayLabel').innerText = t.typeMultiday;
+            
+            document.getElementById('fieldTimeTypeLabel').innerText = t.fieldTimeType;
+            document.getElementById('timeTypeBoth').innerText = t.timeTypeBoth;
+            document.getElementById('timeTypeStartOnly').innerText = t.timeTypeStartOnly;
+            document.getElementById('timeTypeNone').innerText = t.timeTypeNone;
+            
+            document.getElementById('startTimeLabel').innerText = t.startTime;
+            document.getElementById('endTimeLabel').innerText = t.endTime;
+            document.getElementById('fieldNotesLabel').innerText = t.fieldNotes;
+            document.getElementById('cancelModalBtn').innerText = t.cancel;
+            document.getElementById('saveModalBtn').innerText = t.save;
+            
+            document.getElementById('authTitle').innerText = t.loginText;
+            document.getElementById('usernameLabel').innerText = t.userLabel;
+            document.getElementById('authCancelBtn').innerText = t.cancel;
+
+            updateUserProfileUI();
+            updateFormFields();
+        }
+
+        function updateUserProfileUI() {
+            const t = translations[currentLang];
+            const profileContainer = document.getElementById('userProfileBtn');
+            profileContainer.innerHTML = `
+                <button onclick="openAuthModal()" class="flex items-center space-x-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all text-xs font-semibold text-slate-700 shadow-sm">
+                    <i class="fa-solid fa-circle-user text-indigo-600 text-sm"></i>
+                    <span class="max-w-[100px] truncate">${currentUser || t.guestUser}</span>
+                </button>
+            `;
+        }
+
+        function checkTimeConflict(newItem) {
+            // Only check conflicts if time is specified ('both' or 'start_only')
+            if (newItem.timeType === 'none') return false;
+
+            const newStartMinutes = timeToMinutes(newItem.startTime);
+            const newEndMinutes = newItem.timeType === 'both' ? timeToMinutes(newItem.endTime) : newStartMinutes + 30;
+
+            // Expand relevant dates for newItem
+            const datesToCheck = getDatesInRange(newItem.startDate, newItem.endDate || newItem.startDate);
+
+            for (let dateStr of datesToCheck) {
+                // Get all existing items for this date
+                const existingOnDate = scheduleItems.filter(item => {
+                    if (item.id === newItem.id) return false; // ignore self when editing
+                    return isItemOnDate(item, dateStr) && item.timeType !== 'none';
+                });
+
+                for (let existing of existingOnDate) {
+                    const exStart = timeToMinutes(existing.startTime);
+                    const exEnd = existing.timeType === 'both' ? timeToMinutes(existing.endTime) : exStart + 30;
+
+                    // Standard time range overlap check: Start1 < End2 AND End1 > Start2
+                    if (newStartMinutes < exEnd && newEndMinutes > exStart) {
+                        return true; // Conflict detected!
+                    }
+                }
+            }
+            return false;
+        }
+
+        function timeToMinutes(timeStr) {
+            if (!timeStr) return 0;
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        function getDatesInRange(startDateStr, endDateStr) {
+            const dates = [];
+            let curr = new Date(startDateStr);
+            const end = new Date(endDateStr);
+            while (curr <= end) {
+                dates.push(curr.toISOString().split('T')[0]);
+                curr.setDate(curr.getDate() + 1);
+            }
+            return dates;
+        }
+
+        function isItemOnDate(item, dateStr) {
+            if (item.type === 'regular') {
+                return item.startDate === dateStr;
+            } else if (item.type === 'deadline' || item.type === 'multiday') {
+                return dateStr >= item.startDate && dateStr <= item.endDate;
+            }
+            return false;
+        }
+
+        function renderTimeline() {
+            const t = translations[currentLang];
+            const container = document.getElementById('timelineContainer');
+            container.innerHTML = '';
+
+            const today = getTodayString();
+            document.getElementById('currentDateSub').innerText = formatDateDisplay(today);
+
+            const searchKey = document.getElementById('searchInput').value.trim().toLowerCase();
+            const dateFilter = document.getElementById('dateFilterInput').value;
+
+            // Calculate range of dates to display
+            let datesToRender = [];
+
+            if (dateFilter) {
+                // If specific date selected in jump picker
+                datesToRender = [dateFilter];
+            } else {
+                // Collect all dates from schedule items
+                const dateSet = new Set();
+                
+                // Always include today
+                dateSet.add(today);
+
+                // Collect all active dates across all items
+                scheduleItems.forEach(item => {
+                    const start = item.startDate;
+                    const end = item.endDate || item.startDate;
+                    
+                    const itemDates = getDatesInRange(start, end);
+                    itemDates.forEach(d => {
+                        // Requirement 17: Filter past dates if toggle is OFF
+                        if (showPastEvents || d >= today) {
+                            dateSet.add(d);
+                        }
+                    });
+                });
+
+                datesToRender = Array.from(dateSet).sort();
+            }
+
+            if (datesToRender.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white p-12 rounded-2xl border border-slate-200 text-center space-y-3">
+                        <i class="fa-regular fa-calendar-xmark text-4xl text-slate-300"></i>
+                        <p class="text-sm font-semibold text-slate-500">${t.noSchedules}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let todayItemCount = 0;
+
+            datesToRender.forEach(dateStr => {
+                // Retrieve items occurring on this date
+                let dayItems = scheduleItems.filter(item => isItemOnDate(item, dateStr));
+
+                // Filter by keyword search if any
+                if (searchKey) {
+                    dayItems = dayItems.filter(item => 
+                        item.title.toLowerCase().includes(searchKey) || 
+                        (item.notes && item.notes.toLowerCase().includes(searchKey)) ||
+                        (item.startTime && item.startTime.includes(searchKey))
+                    );
+                }
+
+                // Skip rendering empty past days
+                if (dayItems.length === 0 && dateStr < today && !dateFilter) return;
+
+                if (dateStr === today) {
+                    todayItemCount = dayItems.length;
+                }
+
+                /* Requirement 5 Sorting Rules:
+                   1. Timed events sorted by startTime
+                   2. Date-only / untimed regular items
+                   3. Deadline tasks
+                   4. Multi-day activities
+                */
+                dayItems.sort((a, b) => {
+                    const priorityScore = (item) => {
+                        if (item.timeType !== 'none') return 1; // Highest: Timed
+                        if (item.type === 'regular') return 2;  // Untimed Regular
+                        if (item.type === 'deadline') return 3; // Deadline
+                        return 4;                               // Multi-day
+                    };
+
+                    const scoreA = priorityScore(a);
+                    const scoreB = priorityScore(b);
+
+                    if (scoreA !== scoreB) {
+                        return scoreA - scoreB;
+                    }
+
+                    // If both are timed, sort by startTime
+                    if (a.timeType !== 'none' && b.timeType !== 'none') {
+                        return (a.startTime || '').localeCompare(b.startTime || '');
+                    }
+
+                    return 0;
+                });
+
+                // Render Day Card
+                const isPast = dateStr < today;
+                const isToday = dateStr === today;
+
+                const dayCard = document.createElement('div');
+                dayCard.className = `bg-white rounded-2xl border ${isToday ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-slate-200'} shadow-sm overflow-hidden transition-all`;
+
+                // Date Card Header
+                const headerBg = isToday ? 'bg-indigo-600 text-white' : (isPast ? 'bg-slate-100 text-slate-600' : 'bg-slate-50 text-slate-800');
+                
+                dayCard.innerHTML = `
+                    <div class="px-5 py-3 ${headerBg} flex items-center justify-between border-b border-slate-100">
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-sm sm:text-base">${formatDateDisplay(dateStr)}</span>
+                            ${isToday ? `<span class="bg-indigo-400/30 text-white text-xs px-2 py-0.5 rounded-md font-semibold">TODAY</span>` : ''}
+                            ${isPast ? `<span class="bg-slate-200 text-slate-600 text-xs px-2 py-0.5 rounded-md font-medium">已过去</span>` : ''}
+                        </div>
+                        <span class="text-xs font-semibold ${isToday ? 'text-indigo-100' : 'text-slate-500'}">
+                            ${dayItems.length} 行程
+                        </span>
+                    </div>
+                    <div class="p-4 divide-y divide-slate-100 space-y-3 divide-y-0" id="items-container-${dateStr}">
+                    </div>
+                `;
+
+                container.appendChild(dayCard);
+
+                const itemsBox = document.getElementById(`items-container-${dateStr}`);
+
+                if (dayItems.length === 0) {
+                    itemsBox.innerHTML = `<p class="text-xs text-slate-400 py-2 text-center">${t.noSchedules}</p>`;
+                } else {
+                    dayItems.forEach(item => {
+                        itemsBox.appendChild(createItemElement(item, dateStr));
+                    });
+                }
+            });
+
+            // Requirement 10: Trigger light day notification banner if count < 3
+            checkLightScheduleNotification(todayItemCount);
+        }
+
+        function createItemElement(item, currentDateStr) {
+            const t = translations[currentLang];
+            const el = document.createElement('div');
+            el.className = "p-3.5 bg-slate-50/70 hover:bg-slate-50 rounded-xl border border-slate-100 flex items-start justify-between space-x-3 transition-all";
+
+            // Determine Icon and Badges according to type
+            let typeBadge = '';
+            let borderAccent = 'border-l-4 border-l-indigo-500';
+
+            if (item.type === 'deadline') {
+                borderAccent = 'border-l-4 border-l-amber-500';
+                typeBadge = `
+                    <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center space-x-1">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                        <span>${t.dueTag} (${t.duePrefix}${item.endDate})</span>
+                    </span>
+                `;
+            } else if (item.type === 'multiday') {
+                borderAccent = 'border-l-4 border-l-purple-500';
+                typeBadge = `
+                    <span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center space-x-1">
+                        <i class="fa-solid fa-calendar-days"></i>
+                        <span>${t.multidayTag} (${item.startDate} ~ ${item.endDate})</span>
+                    </span>
+                `;
+            } else {
+                typeBadge = `
+                    <span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                        ${item.timeType !== 'none' ? t.timedTag : t.untimedTag}
+                    </span>
+                `;
+            }
+
+            // Time string formatting
+            let timeDisplay = '';
+            if (item.timeType === 'both') {
+                timeDisplay = `<span class="font-semibold text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"><i class="fa-regular fa-clock mr-1"></i>${item.startTime} - ${item.endTime}</span>`;
+            } else if (item.timeType === 'start_only') {
+                timeDisplay = `<span class="font-semibold text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"><i class="fa-regular fa-clock mr-1"></i>${item.startTime} 开始</span>`;
+            } else {
+                timeDisplay = `<span class="font-medium text-xs text-slate-400"><i class="fa-regular fa-sun mr-1"></i>全天</span>`;
+            }
+
+            el.classList.add(...borderAccent.split(' '));
+
+            el.innerHTML = `
+                <div class="space-y-1.5 flex-grow min-w-0">
+                    <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                        ${timeDisplay}
+                        ${typeBadge}
+                    </div>
+                    <h4 class="font-semibold text-sm text-slate-800 truncate">${escapeHtml(item.title)}</h4>
+                    ${item.notes ? `<p class="text-xs text-slate-500 line-clamp-2"><i class="fa-regular fa-file-lines mr-1 text-slate-400"></i>${escapeHtml(item.notes)}</p>` : ''}
+                </div>
+                <div class="flex items-center space-x-1 shrink-0 pt-0.5">
+                    <button onclick="openEditModal('${item.id}')" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors" title="编辑">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button onclick="deleteItem('${item.id}')" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg transition-colors" title="删除">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+
+            return el;
+        }
+
+        function checkLightScheduleNotification(todayCount) {
+            const t = translations[currentLang];
+            if (todayCount > 0 && todayCount <= 2) {
+                showNotificationBanner(t.lightDayNotif, "💡 轻松一日");
+            }
+        }
+
+        function showNotificationBanner(msg, title) {
+            const banner = document.getElementById('notificationBanner');
+            document.getElementById('notifTitle').innerText = title || "行程提醒";
+            document.getElementById('notifBody').innerText = msg;
+            banner.classList.remove('hidden');
+        }
+
+        function closeNotificationBanner() {
+            document.getElementById('notificationBanner').classList.add('hidden');
+        }
+
+        function openAddModal() {
+            const t = translations[currentLang];
+            document.getElementById('modalFormTitle').innerText = t.modalTitleAdd;
+            document.getElementById('itineraryForm').reset();
+            document.getElementById('editItemId').value = '';
+            document.getElementById('startDate').value = getTodayString();
+            document.getElementById('formConflictAlert').classList.add('hidden');
+            
+            // Set default radio checked
+            document.querySelector('input[name="itemType"][value="regular"]').checked = true;
+            
+            updateFormFields();
+            document.getElementById('itineraryModal').classList.remove('hidden');
+        }
+
+        function openEditModal(id) {
+            const t = translations[currentLang];
+            const item = scheduleItems.find(i => i.id === id);
+            if (!item) return;
+
+            document.getElementById('modalFormTitle').innerText = t.modalTitleEdit;
+            document.getElementById('editItemId').value = item.id;
+            document.getElementById('itemTitle').value = item.title;
+            
+            // Select radio
+            const radio = document.querySelector(`input[name="itemType"][value="${item.type}"]`);
+            if (radio) radio.checked = true;
+
+            document.getElementById('startDate').value = item.startDate;
+            document.getElementById('endDate').value = item.endDate || item.startDate;
+            document.getElementById('timeType').value = item.timeType;
+            document.getElementById('startTime').value = item.startTime || '';
+            document.getElementById('endTime').value = item.endTime || '';
+            document.getElementById('itemNotes').value = item.notes || '';
+            document.getElementById('formConflictAlert').classList.add('hidden');
+
+            updateFormFields();
+            document.getElementById('itineraryModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('itineraryModal').classList.add('hidden');
+        }
+
+        function updateFormFields() {
+            const t = translations[currentLang];
+            const selectedType = document.querySelector('input[name="itemType"]:checked').value;
+            const endDateBox = document.getElementById('endDateBox');
+            const endDateLabel = document.getElementById('endDateLabel');
+
+            if (selectedType === 'regular') {
+                endDateBox.classList.add('hidden');
+                document.getElementById('endDate').required = false;
+            } else if (selectedType === 'deadline') {
+                endDateBox.classList.remove('hidden');
+                endDateLabel.innerText = t.deadlineDate;
+                document.getElementById('endDate').required = true;
+            } else if (selectedType === 'multiday') {
+                endDateBox.classList.remove('hidden');
+                endDateLabel.innerText = t.endDate;
+                document.getElementById('endDate').required = true;
+            }
+
+            updateTimeFields();
+        }
+
+        function updateTimeFields() {
+            const timeType = document.getElementById('timeType').value;
+            const timeInputsBox = document.getElementById('timeInputsBox');
+            const startTimeBox = document.getElementById('startTimeBox');
+            const endTimeBox = document.getElementById('endTimeBox');
+
+            if (timeType === 'none') {
+                timeInputsBox.classList.add('hidden');
+                document.getElementById('startTime').required = false;
+                document.getElementById('endTime').required = false;
+            } else if (timeType === 'start_only') {
+                timeInputsBox.classList.remove('hidden');
+                startTimeBox.classList.remove('hidden');
+                endTimeBox.classList.add('hidden');
+                document.getElementById('startTime').required = true;
+                document.getElementById('endTime').required = false;
+            } else { // 'both'
+                timeInputsBox.classList.remove('hidden');
+                startTimeBox.classList.remove('hidden');
+                endTimeBox.classList.remove('hidden');
+                document.getElementById('startTime').required = true;
+                document.getElementById('endTime').required = true;
+            }
+        }
+
+        function validateDates() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const selectedType = document.querySelector('input[name="itemType"]:checked').value;
+
+            if ((selectedType === 'deadline' || selectedType === 'multiday') && endDate && endDate < startDate) {
+                document.getElementById('endDate').value = startDate;
+            }
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const t = translations[currentLang];
+            const today = getTodayString();
+
+            const editId = document.getElementById('editItemId').value;
+            const title = document.getElementById('itemTitle').value.trim();
+            const type = document.querySelector('input[name="itemType"]:checked').value;
+            const startDate = document.getElementById('startDate').value;
+            let endDate = document.getElementById('endDate').value;
+            if (type === 'regular') endDate = startDate;
+
+            const timeType = document.getElementById('timeType').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const notes = document.getElementById('itemNotes').value.trim();
+
+            // Requirement 17 Rule: Cannot add past-dated items
+            if (!editId && startDate < today) {
+                const alertBox = document.getElementById('formConflictAlert');
+                document.getElementById('conflictAlertText').innerText = t.pastDateAlert;
+                alertBox.classList.remove('hidden');
+                return;
+            }
+
+            const itemObject = {
+                id: editId || 'item_' + Date.now(),
+                title,
+                type,
+                startDate,
+                endDate,
+                timeType,
+                startTime: timeType !== 'none' ? startTime : '',
+                endTime: timeType === 'both' ? endTime : '',
+                notes,
+                createdAt: new Date().toISOString()
+            };
+
+            // Requirement 6 Rule: Check if time slot is full/conflict
+            if (checkTimeConflict(itemObject)) {
+                const alertBox = document.getElementById('formConflictAlert');
+                document.getElementById('conflictAlertText').innerText = t.conflictAlert;
+                alertBox.classList.remove('hidden');
+                return;
+            }
+
+            if (editId) {
+                const index = scheduleItems.findIndex(i => i.id === editId);
+                if (index !== -1) scheduleItems[index] = itemObject;
+            } else {
+                scheduleItems.push(itemObject);
+            }
+
+            saveUserData();
+            closeModal();
+            renderTimeline();
+        }
+
+        function deleteItem(id) {
+            scheduleItems = scheduleItems.filter(i => i.id !== id);
+            saveUserData();
+            renderTimeline();
+        }
+
+        function openAuthModal() {
+            document.getElementById('authUsername').value = currentUser;
+            document.getElementById('authErrorMsg').classList.add('hidden');
+            document.getElementById('authModal').classList.remove('hidden');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.add('hidden');
+        }
+
+        function handleAuthSubmit(e) {
+            e.preventDefault();
+            const username = document.getElementById('authUsername').value.trim();
+            const t = translations[currentLang];
+
+            if (!username) {
+                const error = document.getElementById('authErrorMsg');
+                error.innerText = t.usernameRequired;
+                error.classList.remove('hidden');
+                return;
+            }
+
+            currentUser = username;
+            localStorage.setItem('schedule_current_user', currentUser);
+            
+            updateUserProfileUI();
+            closeAuthModal();
+            loadUserData();
+            renderTimeline();
+        }
+
+        function toggleShowPast() {
+            showPastEvents = !showPastEvents;
+            updateStaticText();
+            renderTimeline();
+        }
+
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('dateFilterInput').value = '';
+            renderTimeline();
+        }
+
+        function formatDateDisplay(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            return `${parts[0]}年${parseInt(parts[1])}月${parseInt(parts[2])}日`;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;")
+                      .replace(/"/g, "&quot;")
+                      .replace(/'/g, "&#039;");
+        }
+
+        window.onload = function() {
+            loadUserData();
+            updateStaticText();
+            renderTimeline();
+            
+            // Morning/Night Simulated Push Reminders (Req 4)
+            setTimeout(() => {
+                const currentHour = new Date().getHours();
+                const t = translations[currentLang];
+                if (currentHour >= 20 || currentHour < 6) {
+                    showNotificationBanner("不要忘记检查明日行程安排！", t.nightNotifTitle);
+                } else {
+                    showNotificationBanner("新的一天开始，保持高效专心！", t.morningNotifTitle);
+                }
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
